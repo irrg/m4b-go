@@ -33,7 +33,8 @@ def run(opts: Options) -> None:
         safe_title = _sanitize(ch.title)
         dst = str(Path(opts.output_dir) / f"{i:03d}-{safe_title}{ext}")
         print(f"[{i}/{total}] {ch.title}")
-        ffmpeg.extract_segment(opts.input_file, dst, ch.start, ch.end)
+        ffmpeg.extract_segment(opts.input_file, dst, ch.start, ch.end,
+                               ffmpeg.ConvertOpts(bitrate=opts.bitrate))
 
         flags = from_probe_result(result).to_ffmpeg_flags()
         title_flag = f"title={ch.title}"

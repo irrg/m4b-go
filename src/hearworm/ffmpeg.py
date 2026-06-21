@@ -119,13 +119,20 @@ def concat(inputs: list[str | Path], output: str | Path) -> None:
 
 
 def extract_segment(src: str | Path, dst: str | Path,
-                    start: timedelta, end: timedelta) -> None:
+                    start: timedelta, end: timedelta,
+                    opts: ConvertOpts | None = None) -> None:
+    ext = Path(str(dst)).suffix.lower()
+    if ext == ".mp3":
+        bitrate = (opts.bitrate if opts else "") or _default_bitrate(str(dst))
+        audio_args = ["-c:a", "libmp3lame", "-b:a", bitrate, "-vn"]
+    else:
+        audio_args = ["-c", "copy", "-vn"]
     _run([
         "ffmpeg", "-y",
         "-ss", _fmt_duration(start),
         "-to", _fmt_duration(end),
         "-i", str(src),
-        "-c", "copy", "-vn",
+        *audio_args,
         str(dst),
     ])
 
