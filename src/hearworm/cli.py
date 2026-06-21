@@ -161,3 +161,53 @@ def auth_show() -> None:
     else:
         typer.echo("No activation bytes stored. Run 'hearworm auth login'.", err=True)
         raise typer.Exit(1)
+
+
+@app.command()
+def library(
+    search: str = typer.Argument("", help="Filter by title substring"),
+) -> None:
+    """List your Audible library."""
+    from . import library as lib
+
+    books = lib.list_books()
+    if search:
+        books = [b for b in books if search.lower() in b.title.lower()]
+    if not books:
+        typer.echo("No books found.")
+        return
+    for b in books:
+        authors = ", ".join(b.authors) if b.authors else "Unknown"
+        hrs = b.runtime_minutes // 60
+        mins = b.runtime_minutes % 60
+        duration = f"{hrs}h{mins:02d}m" if hrs else f"{mins}m"
+        typer.echo(f"{b.asin}  {duration:>7}  {b.title}  [{authors}]")
+
+
+@app.command()
+def download(
+    title_or_asin: str = typer.Argument(..., help="Book title (partial match) or ASIN"),
+    output_dir: str = typer.Option(".", "--output-dir", "-o", help="Directory to save the m4b"),
+    then_convert: str = typer.Option("", "--then-convert", help="Also convert to this format (e.g. mp3)"),
+    audio_bitrate: str = typer.Option("", "--audio-bitrate", help="Bitrate for conversion"),
+) -> None:
+    """Download an Audible book and decrypt it to m4b."""
+    from . import library as lib, download as dl, convert as conv
+
+    book = lib.find_book(title_or_asin)
+    if not book:
+        typer.echo(f"No book found matching {title_or_asin!r}", err=True)
+        raise typer.Exit(1)
+
+    typer.echo(f"Found: {book.title} by {', '.join(book.authors)}")
+    out_path = dl.download_book(book.asin, Path(output_dir), title=book.title)
+
+    if then_convert:
+        typer.echo(f"Converting to {then_convert}...")
+        conv.run(conv.Options(
+            input_files=[str(out_path)],
+            output_dir=output_dir,
+            format=then_convert,
+            bitrate=audio_bitrate,
+        ))
+        typer.echo("Done.")

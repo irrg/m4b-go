@@ -1,41 +1,45 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 
 _CONFIG_DIR = Path.home() / ".config" / "hearworm"
-_CREDS_FILE = _CONFIG_DIR / "auth.json"
+_AUTH_FILE = _CONFIG_DIR / "auth.json"
 
 
 def login(country: str = "us") -> str:
     import audible
 
+    _CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     auth = audible.Authenticator.from_login_external(locale=country)
     ab = auth.get_activation_bytes()
-
-    _CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    data = _load()
-    data["activation_bytes"] = ab
-    data["country"] = country
-    _CREDS_FILE.write_text(json.dumps(data, indent=2))
-
+    auth.activation_bytes = ab
+    auth.to_file(_AUTH_FILE, encryption=False)
     return ab
 
 
+def load_auth() -> "audible.Authenticator":
+    import audible
+
+    if not _AUTH_FILE.exists():
+        raise RuntimeError("Not logged in. Run 'hearworm auth login' first.")
+    return audible.Authenticator.from_file(_AUTH_FILE, encryption=False)
+
+
 def get_activation_bytes() -> str | None:
-    data = _load()
-    return data.get("activation_bytes")
+    if not _AUTH_FILE.exists():
+        return None
+    auth = load_auth()
+    return auth.activation_bytes
 
 
 def set_activation_bytes(ab: str) -> None:
+    import audible
+
     _CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    data = _load()
-    data["activation_bytes"] = ab
-    _CREDS_FILE.write_text(json.dumps(data, indent=2))
-
-
-def _load() -> dict:
-    if _CREDS_FILE.exists():
-        return json.loads(_CREDS_FILE.read_text())
-    return {}
+    if _AUTH_FILE.exists():
+        auth = load_auth()
+    else:
+        raise RuntimeError("Not logged in. Run 'hearworm auth login' first.")
+    auth.activation_bytes = ab
+    auth.to_file(_AUTH_FILE, encryption=False)
