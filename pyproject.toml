@@ -1,0 +1,25 @@
+[project]
+name = "hearworm"
+version = "0.1.0"
+description = "Audiobook conversion and manipulation tool"
+readme = "README.md"
+authors = [
+    { name = "Robb Irrgang", email = "robb@irrg.org" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.15",
+    "audible>=0.10",
+]
+
+[project.scripts]
+hearworm = "hearworm.cli:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.8,<0.12.0"]
+build-backend = "uv_build"
