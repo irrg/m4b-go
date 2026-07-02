@@ -189,10 +189,11 @@ def download(
     title_or_asin: str = typer.Argument(..., help="Book title (partial match) or ASIN"),
     output_dir: str = typer.Option(".", "--output-dir", "-o", help="Directory to save the m4b"),
     then_convert: str = typer.Option("", "--then-convert", help="Also convert to this format (e.g. mp3)"),
-    audio_bitrate: str = typer.Option("", "--audio-bitrate", help="Bitrate for conversion"),
+    then_split: str = typer.Option("", "--then-split", help="Split into per-chapter files of this format (e.g. mp3)"),
+    audio_bitrate: str = typer.Option("", "--audio-bitrate", help="Bitrate for --then-convert or --then-split"),
 ) -> None:
     """Download an Audible book and decrypt it to m4b."""
-    from . import library as lib, download as dl, convert as conv
+    from . import library as lib, download as dl, convert as conv, split as sp
 
     book = lib.find_book(title_or_asin)
     if not book:
@@ -202,7 +203,17 @@ def download(
     typer.echo(f"Found: {book.title} by {', '.join(book.authors)}")
     out_path = dl.download_book(book.asin, Path(output_dir), title=book.title)
 
-    if then_convert:
+    if then_split:
+        split_dir = str(Path(output_dir) / out_path.stem)
+        typer.echo(f"Splitting into {then_split} chapters → {split_dir}/")
+        sp.run(sp.Options(
+            input_file=str(out_path),
+            output_dir=split_dir,
+            format=then_split,
+            bitrate=audio_bitrate,
+        ))
+        typer.echo("Done.")
+    elif then_convert:
         typer.echo(f"Converting to {then_convert}...")
         conv.run(conv.Options(
             input_files=[str(out_path)],
